@@ -1,7 +1,13 @@
 import os
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 from Constants import Constants
+
+
+def show_image(image, color="gray"):
+    plt.imshow(image, color)
+    plt.show()
 
 
 class ImageLoader:
@@ -17,7 +23,6 @@ class ImageLoader:
             for f in files:
                 if f.endswith(".jpeg") or f.endswith(".jpg"):
                     self._add_to_right_set(os.path.join(root, f))
-
 
     def _add_to_right_set(self, file_path):
 
@@ -35,10 +40,8 @@ class ImageLoader:
         for i in range(num_elems):
             # konverzija u grayscale
             img_elem_gs = cv2.imread(self.paths[set_type][i], cv2.IMREAD_GRAYSCALE)
-            #img_elem_gs = cv2.cvtColor(img_elem, cv2.COLOR_RGB2GRAY)
             img_resized = cv2.resize(img_elem_gs, (Constants.IMG_HEIGHT, Constants.IMG_WIDTH), interpolation=cv2.INTER_AREA)
             if normalize:
-                #img_resized = img_resized/255.0
                 img_resized = (img_resized - np.mean(img_resized))/np.std(img_resized)
             x.append(img_resized)
             y.append(self._extract_label(self.paths[set_type][i].lower()))

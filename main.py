@@ -4,7 +4,6 @@ from keras.utils import np_utils
 from keras.models import Sequential
 from keras.layers import Dense,Dropout,BatchNormalization,Flatten
 from keras.layers import Convolution2D, MaxPooling2D
-from keras.optimizers import Adam
 from Constants import Constants
 import time
 from sklearn.model_selection import train_test_split
@@ -13,6 +12,7 @@ from keras.models import load_model
 import sys
 from sklearn.metrics import confusion_matrix
 import itertools
+from keras.preprocessing.image import ImageDataGenerator
 
 
 def create_or_load_model(load_model_from_file=False):
@@ -43,11 +43,6 @@ def create_or_load_model(load_model_from_file=False):
     model.summary()
     model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
     return model
-
-
-def show_image(image, color="gray"):
-    plt.imshow(image, color)
-    plt.show()
 
 
 # Argumenti su da li da ucitava model i koliko epoha da ga trenira
@@ -103,11 +98,11 @@ def convert_to_num(y):
     return np.array(retval)
 
 
-def load_and_reshape_data(img_loader,set):
+def load_and_reshape_data(img_loader, chosen_set):
     start_time = time.time()
-    print("Loading "+str(set) +" data...")
-    x, y = img_loader.load_set("test",normalize=True)
-    print(str(set)+' data loaded in: ',time.time()-start_time)
+    print("Loading "+str(chosen_set) + " data...")
+    x, y = img_loader.load_set(chosen_set,normalize=True)
+    print(str(chosen_set)+' data loaded in: ',time.time()-start_time)
     x = x.reshape(x.shape[0], Constants.IMG_HEIGHT, Constants.IMG_WIDTH, 1)
     y = np_utils.to_categorical(y, Constants.NUM_CATEGORIES)
     return x, y
@@ -128,9 +123,16 @@ if __name__ == '__main__':
     print("Done!")
 
     #X_test, y_test = load_and_reshape_data(img_loader, "test")
+    data_gen = ImageDataGenerator(
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        rescale=0.8,
+        zoom_range=0.2
+    )
 
     print("Training model...")
-    model.fit(x=X_train, y=y_train, verbose=1, epochs=num_epochs)
+    model.fit_generator(data_gen.flow(x=X_train, y=y_train, batch_size=32), steps_per_epoch=len(X_train) / 32
+    , verbose=1, epochs=num_epochs)
     print("Saving model...")
     model.save(Constants.MODEL_FILE_PATH)
 
