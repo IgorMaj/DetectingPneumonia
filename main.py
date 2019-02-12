@@ -45,11 +45,12 @@ def create_or_load_model(load_model_from_file=False):
     return model
 
 
-# Argumenti su da li da ucitava model i koliko epoha da ga trenira
+# Argumenti su da li da ucitava model, koliko epoha da ga trenira,da li da pokrene test
+# Primer: False(ne ucitava model), 5(broj epoha, 0 nece ucitavati train i validaciju), False(ne pokrece test)
 def get_args_from_cmd():
-    if len(sys.argv) != 3:
-        return False, 5
-    return sys.argv[1] == 'True', int(sys.argv[2])
+    if len(sys.argv) != 4:
+        return False, 5, False
+    return sys.argv[1] == 'True', int(sys.argv[2]), sys.argv[3] == 'True'
 
 
 def plot_confusion_matrix(cm, classes,
@@ -108,21 +109,26 @@ def load_and_reshape_data(img_loader, chosen_set):
     return x, y
 
 
-if __name__ == '__main__':
-    load_model_from_file, num_epochs = get_args_from_cmd()
-    model = create_or_load_model(load_model_from_file)
-    img_loader = ImageLoader()
-    X_train, y_train = load_and_reshape_data(img_loader, "train")
-    print("Spliting training data to train and validation sets and adding small validation set..")
+def evaluate_model(model,x,y):
+    print("Evaluating...")
+    loss, acc = model.evaluate(x=x, y=y, verbose=0)
+    rounded_predictions = model.predict_classes(x)
+    cm = confusion_matrix(y_true=convert_to_num(y), y_pred=rounded_predictions)
+    plot_confusion_matrix(cm, Constants.CLASS_NAMES)
+    print('Loss: ', loss)
+    print('Accuracy: ', acc)
 
-    X_train, X_validate, y_train, y_validate = train_test_split(X_train, y_train, test_size=0.2, random_state=None)
+
+def train_and_evaluate_model(model, img_loader,num_epochs):
+    x_train, y_train = load_and_reshape_data(img_loader, "train")
+    print("Spliting training data to train and validation sets and adding small validation set..")
+    x_train, x_validate, y_train, y_validate = train_test_split(x_train, y_train, test_size=0.2, random_state=None)
     # validacioni skup, nazvan small jer ima svega nekoliko slika
-    X_small, y_small = load_and_reshape_data(img_loader, "val")
-    X_validate = np.concatenate((X_validate, X_small), axis=0)
-    y_validate = np.concatenate((y_validate,y_small), axis=0)
+    x_small, y_small = load_and_reshape_data(img_loader, "val")
+    x_validate = np.concatenate((x_validate, x_small), axis=0)
+    y_validate = np.concatenate((y_validate, y_small), axis=0)
     print("Done!")
 
-    #X_test, y_test = load_and_reshape_data(img_loader, "test")
     data_gen = ImageDataGenerator(
         width_shift_range=0.2,
         height_shift_range=0.2,
@@ -131,15 +137,21 @@ if __name__ == '__main__':
     )
 
     print("Training model...")
-    model.fit_generator(data_gen.flow(x=X_train, y=y_train, batch_size=32), steps_per_epoch=len(X_train) / 32
-    , verbose=1, epochs=num_epochs)
+    model.fit_generator(data_gen.flow(x=x_train, y=y_train, batch_size=32), steps_per_epoch=len(x_train) / 32
+                        , verbose=1, epochs=num_epochs)
     print("Saving model...")
     model.save(Constants.MODEL_FILE_PATH)
+    evaluate_model(model, x_validate, y_validate)
 
-    print("Evaluating...")
-    loss, acc = model.evaluate(x=X_validate, y=y_validate, verbose=0)
-    rounded_predictions = model.predict_classes(X_validate)
-    cm = confusion_matrix(y_true=convert_to_num(y_validate), y_pred=rounded_predictions)
-    plot_confusion_matrix(cm, Constants.CLASS_NAMES)
-    print('Loss: ', loss)
-    print('Accuracy: ', acc)
+
+if __name__ == '__main__':
+    load_model_from_file, num_epochs,run_test = get_args_from_cmd()
+    model = create_or_load_model(load_model_from_file)
+    img_loader = ImageLoader()
+    if num_epochs > 0:
+        train_and_evaluate_model(model, img_loader, num_epochs)
+
+    if run_test:
+        print("Running test...")
+        X_test, y_test = load_and_reshape_data(img_loader, "test")
+        evaluate_model(model, X_test, y_test)
