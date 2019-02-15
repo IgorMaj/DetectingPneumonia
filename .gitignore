@@ -40,3 +40,4 @@ chest_xray/
 idea/
 __pycache__/
 *.hdf5
+*.dat
