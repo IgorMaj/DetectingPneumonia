@@ -3,7 +3,7 @@ from trainer.ImageLoader import FileImageLoader, CloudImageLoader
 from keras.utils import np_utils
 from keras.models import Sequential
 from keras.layers import Dense,Dropout, Flatten
-from keras.layers import Convolution2D, MaxPooling2D
+from keras.layers import Convolution2D, MaxPooling2D,BatchNormalization
 from trainer.Constants import Constants
 import time
 from sklearn.model_selection import train_test_split
@@ -31,20 +31,28 @@ def create_or_load_model(load_file=False,runs_on_cloud=False):
     print("Creating model...")
     model = Sequential()
 
-    model.add(Convolution2D(filters=64, kernel_size=(3, 3), activation="relu",
+    model.add(Convolution2D(filters=16, kernel_size=(3, 3), activation="relu",
                             input_shape=(Constants.IMG_HEIGHT, Constants.IMG_WIDTH, 1)))
-    model.add(Convolution2D(filters=64, kernel_size=(3, 3), activation="relu"))
+
+    model.add(Convolution2D(filters=32, kernel_size=(3, 3), activation="relu"))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    #model.add(BatchNormalization())
+    model.add(BatchNormalization())
     model.add(Dropout(rate=0.25))
-    model.add(Convolution2D(filters=128, kernel_size=(5, 5), activation="relu"))
-    model.add(Convolution2D(filters=128, kernel_size=(7, 7), activation="relu"))
-    #model.add(BatchNormalization())
+
+    model.add(Convolution2D(filters=32, kernel_size=(5, 5), activation="relu"))
     model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(BatchNormalization())
     model.add(Dropout(rate=0.25))
+
+    model.add(Convolution2D(filters=64, kernel_size=(5, 5), activation="relu"))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(BatchNormalization())
+    model.add(Dropout(rate=0.25))
+
     model.add(Flatten())
-    model.add(Dense(units=36, activation="relu"))
-    model.add(Dense(units=36, activation="relu"))
+    model.add(Dense(units=128, activation="relu"))
+    model.add(BatchNormalization())
+    model.add(Dropout(0.5))
     model.add(Dense(units=Constants.NUM_CATEGORIES, activation="softmax"))
 
     model.summary()
@@ -131,7 +139,7 @@ def train_and_evaluate_model(model, img_loader,num_epochs,runs_on_cloud):
     data_gen = ImageDataGenerator(
         width_shift_range=0.1,
         height_shift_range=0.1,
-        zoom_range=0.1
+        zoom_range=0.2
     )
 
     checkpoint = ModelSaveCallback(runs_on_cloud=runs_on_cloud)
