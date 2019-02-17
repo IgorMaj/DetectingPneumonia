@@ -3,18 +3,16 @@ import cv2
 import numpy as np
 from trainer.Constants import Constants
 from abc import ABC, abstractmethod
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io
 from io import BytesIO
 import random
 
 
-
-
-"""def show_image(image, color="gray"):
+def show_image(image, color="gray"):
     plt.imshow(image, color)
-    plt.show()"""
+    plt.show()
 
 
 class ImageLoader(ABC):

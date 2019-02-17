@@ -1,5 +1,5 @@
 from trainer.ImageLoader import FileImageLoader, CloudImageLoader
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from keras.utils import np_utils
 from keras.models import Sequential
 from keras.layers import Dense,Dropout, Flatten
@@ -9,7 +9,7 @@ import time
 from sklearn.model_selection import train_test_split
 import numpy as np
 from sklearn.metrics import confusion_matrix
-#import itertools
+import itertools
 from keras.preprocessing.image import ImageDataGenerator
 from argparse import ArgumentParser
 import pickle
@@ -63,11 +63,8 @@ def create_or_load_model(load_file=False,runs_on_cloud=False):
 def plot_confusion_matrix(cm, classes,
                           normalize=False,
                           title='Confusion matrix',
-                          cmap=None):
-    """
-    This function prints and plots the confusion matrix.
-    Normalization can be applied by setting `normalize=True`.
-    """
+                          cmap=plt.cm.Blues,runs_on_cloud=False):
+
     if normalize:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
         print("Normalized confusion matrix")
@@ -76,24 +73,25 @@ def plot_confusion_matrix(cm, classes,
 
     print(cm)
 
-    """plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45)
-    plt.yticks(tick_marks, classes)
+    if not runs_on_cloud:
+        plt.imshow(cm, interpolation='nearest', cmap=cmap)
+        plt.title(title)
+        plt.colorbar()
+        tick_marks = np.arange(len(classes))
+        plt.xticks(tick_marks, classes, rotation=45)
+        plt.yticks(tick_marks, classes)
 
-    fmt = '.2f' if normalize else 'd'
-    thresh = cm.max() / 2.
-    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j], fmt),
-                 horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
+        fmt = '.2f' if normalize else 'd'
+        thresh = cm.max() / 2.
+        for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+            plt.text(j, i, format(cm[i, j], fmt),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
 
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-    plt.tight_layout()
-    plt.show()"""
+        plt.ylabel('True label')
+        plt.xlabel('Predicted label')
+        plt.tight_layout()
+        plt.show()
 
 
 def convert_to_num(y):
@@ -116,14 +114,21 @@ def load_and_reshape_data(img_loader, chosen_set):
     return x, y
 
 
-def evaluate_model(model,x,y):
+def evaluate_model(model,x,y,runs_on_cloud=False):
     print("Evaluating...")
     loss, acc = model.evaluate(x=x, y=y, verbose=0)
     rounded_predictions = model.predict_classes(x)
     cm = confusion_matrix(y_true=convert_to_num(y), y_pred=rounded_predictions)
-    plot_confusion_matrix(cm, Constants.CLASS_NAMES)
+    plot_confusion_matrix(cm, Constants.CLASS_NAMES, runs_on_cloud=runs_on_cloud)
     print('Loss: ', loss)
     print('Accuracy: ', acc)
+
+
+def save_history(history, runs_on_cloud):
+    if not runs_on_cloud:
+        pickle.dump(history, open("history.dat", mode="wb"))
+    else:
+        pickle.dump(history, file_io.FileIO(Constants.CLOUD_BUCKET + "/" + "history.dat", mode='wb'))
 
 
 def train_and_evaluate_model(model, img_loader,num_epochs,runs_on_cloud):
@@ -145,9 +150,11 @@ def train_and_evaluate_model(model, img_loader,num_epochs,runs_on_cloud):
     checkpoint = ModelSaveCallback(runs_on_cloud=runs_on_cloud)
 
     print("Training model...")
-    model.fit_generator(data_gen.flow(x=x_train, y=y_train, batch_size=32), steps_per_epoch=len(x_train) / 32
-                        , verbose=1, epochs=num_epochs, callbacks=[checkpoint])
-    evaluate_model(model, x_validate, y_validate)
+    history = model.fit_generator(data_gen.flow(x=x_train, y=y_train, batch_size=32), steps_per_epoch=len(x_train) / 32,
+                                  verbose=1, epochs=num_epochs,
+                                  callbacks=[checkpoint], validation_data=(x_validate, y_validate))
+    save_history(history.history,runs_on_cloud)
+    evaluate_model(model, x_validate, y_validate, runs_on_cloud=runs_on_cloud)
 
 
 def setup_arg_parser():
@@ -187,4 +194,4 @@ if __name__ == '__main__':
     if run_test:
         print("Running test...")
         X_test, y_test = load_and_reshape_data(img_loader, "test")
-        evaluate_model(model, X_test, y_test)
+        evaluate_model(model, X_test, y_test,runs_on_cloud=runs_on_cloud)

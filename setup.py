@@ -12,6 +12,8 @@ setup(name='trainer',
           'opencv-python',
           'numpy',
           'scikit-learn',
-          'tensorflow'
+          'tensorflow',
+          'Pillow>=1.0',
+          'matplotlib'
       ],
       zip_safe=False)
