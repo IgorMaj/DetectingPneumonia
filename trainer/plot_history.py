@@ -3,7 +3,7 @@ import pickle
 
 
 def load_history_from_file():
-    return pickle.load(open("history.dat", mode="rb"))
+    return pickle.load(open("../history.dat", mode="rb"))
 
 
 if __name__ == '__main__':
