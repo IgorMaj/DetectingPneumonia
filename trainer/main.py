@@ -15,6 +15,7 @@ from argparse import ArgumentParser
 import pickle
 from tensorflow.python.lib.io import file_io
 from trainer.CustomCallbacks import ModelSaveCallback
+from keras.regularizers import l2
 
 
 def load_model_from_file(runs_on_cloud=False):
@@ -37,22 +38,22 @@ def create_or_load_model(load_file=False,runs_on_cloud=False):
     model.add(Convolution2D(filters=32, kernel_size=(3, 3), activation="relu"))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(BatchNormalization())
-    model.add(Dropout(rate=0.25))
+    #model.add(Dropout(rate=0.25))
 
-    model.add(Convolution2D(filters=32, kernel_size=(5, 5), activation="relu"))
+    model.add(Convolution2D(filters=32, kernel_size=(7, 7), activation="relu", kernel_regularizer=l2(0.01)))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(BatchNormalization())
-    model.add(Dropout(rate=0.25))
+    #model.add(Dropout(rate=0.25))
 
-    model.add(Convolution2D(filters=64, kernel_size=(5, 5), activation="relu"))
+    model.add(Convolution2D(filters=64, kernel_size=(7, 7), activation="relu"))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(BatchNormalization())
-    model.add(Dropout(rate=0.25))
+    #model.add(Dropout(rate=0.25))
 
     model.add(Flatten())
-    model.add(Dense(units=128, activation="relu"))
+    model.add(Dense(units=128, activation="relu", kernel_regularizer=l2(0.01)))
     model.add(BatchNormalization())
-    model.add(Dropout(0.5))
+    model.add(Dropout(0.25))
     model.add(Dense(units=Constants.NUM_CATEGORIES, activation="softmax"))
 
     model.summary()
@@ -134,7 +135,8 @@ def save_history(history, runs_on_cloud):
 def train_and_evaluate_model(model, img_loader,num_epochs,runs_on_cloud):
     x_train, y_train = load_and_reshape_data(img_loader, "train")
     print("Spliting training data to train and validation sets and adding small validation set..")
-    x_train, x_validate, y_train, y_validate = train_test_split(x_train, y_train, test_size=0.2, random_state=None)
+    x_train, x_validate, y_train, y_validate = train_test_split(x_train, y_train, test_size=0.1,
+                                                                random_state=Constants.SEED)
     # validacioni skup, nazvan small jer ima svega nekoliko slika
     x_small, y_small = load_and_reshape_data(img_loader, "val")
     x_validate = np.concatenate((x_validate, x_small), axis=0)
@@ -148,6 +150,7 @@ def train_and_evaluate_model(model, img_loader,num_epochs,runs_on_cloud):
     )
 
     checkpoint = ModelSaveCallback(runs_on_cloud=runs_on_cloud)
+
 
     print("Training model...")
     history = model.fit_generator(data_gen.flow(x=x_train, y=y_train, batch_size=32), steps_per_epoch=len(x_train) / 32,
@@ -181,7 +184,6 @@ if __name__ == '__main__':
     parser = setup_arg_parser()
     load_model_from_disk, num_epochs, run_test, runs_on_cloud = get_args_from_cmd(parser)
     model = create_or_load_model(load_model_from_disk,runs_on_cloud)
-
     img_loader = None
     if not runs_on_cloud:
         img_loader = FileImageLoader()

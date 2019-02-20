@@ -6,3 +6,4 @@ class Constants:
     MODEL_FILE_PATH = "model.dat"
     CLASS_NAMES = ["normal", "bacteria", "virus"]
     CLOUD_BUCKET = "gs://detecting_pneumonia_data"
+    SEED = 46
